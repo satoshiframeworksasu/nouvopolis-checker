@@ -1,0 +1,81 @@
+# Rebuilds every published version of the checker and compares the output,
+# byte for byte, with its releases/<version>/SHA256SUMS. Fails on any difference.
+#
+# - The current version (package.json) is built from this commit.
+# - Every version is also built from its tag (v<version>), as published;
+#   a version other than the current one must have its tag.
+# - SHA256SUMS always comes from this commit's releases/<version>/.
+#
+# No secrets, read-only.
+name: Rebuild
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Rebuild every published version and check it against its SHA256SUMS
+        run: |
+          set -eu
+          repo=$(pwd)
+          current=$(node -p 'require("./package.json").version')
+          versions=$(ls releases)
+          [ -n "$versions" ] || { echo "::error::releases/ lists no version"; exit 1; }
+          status=0
+
+          # check <label> <dist dir> <version>: the build gives exactly the files in SHA256SUMS.
+          check() {
+            sums="$repo/releases/$3/SHA256SUMS"
+            dir="$RUNNER_TEMP/check-$1"
+            rm -rf "$dir" && mkdir -p "$dir"
+            cp "$2"/* "$dir"/ && cp "$sums" "$dir"/SHA256SUMS
+            listed=$(awk '{print $2}' "$sums" | sort)
+            built=$(ls "$2" | sort)
+            if [ "$listed" != "$built" ]; then
+              echo "::error::$1: the build gives [$built], SHA256SUMS lists [$listed]"
+              status=1
+            elif (cd "$dir" && sha256sum -c --strict SHA256SUMS); then
+              echo "$1: identical to releases/$3/SHA256SUMS"
+            else
+              echo "::error::$1: differs from releases/$3/SHA256SUMS"
+              status=1
+            fi
+          }
+
+          # build <dir>: npm ci && npm run build in <dir>.
+          build() {
+            (cd "$1" && npm ci --ignore-scripts --no-audit --no-fund && npm run build)
+          }
+
+          for v in $versions; do
+            if [ "$v" = "$current" ]; then
+              echo "== $v, from this commit"
+              build "$repo"
+              check "$v-commit" "$repo/dist" "$v"
+            fi
+            if git rev-parse -q --verify "refs/tags/v$v^{commit}" >/dev/null; then
+              echo "== $v, from tag v$v"
+              tree="$RUNNER_TEMP/tree-$v"
+              git worktree add --detach "$tree" "v$v"
+              build "$tree"
+              check "$v-tag" "$tree/dist" "$v"
+            elif [ "$v" != "$current" ]; then
+              echo "::error::$v: tag v$v is missing, so it cannot be rebuilt as published"
+              status=1
+            fi
+          done
+          exit $status

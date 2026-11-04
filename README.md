@@ -37,6 +37,8 @@ npm run build   # writes dist/check.html and dist/check.sh, and prints their SHA
 
 The output depends only on this repository's content and the locked dependencies, not on the time, the machine or the path. Compare the printed SHA-256 with `releases.json` and with https://nouvopolis.com/check. Node.js 22 or later.
 
+Each published version is tagged `v<version>` at the commit that published it. The **Rebuild** workflow (`.github/workflows/rebuild.yml`) runs on every push and pull request. It has no secrets and only read access. For every version in `releases/`, it runs `npm ci && npm run build` on the version's tag, and for the current version also on the commit being tested. It then checks the output with `sha256sum -c releases/<version>/SHA256SUMS` and fails on any difference. Its runs are public, in this repository's Actions tab.
+
 ## Layout
 
 - `build.mjs`: the build. It bundles the page's script with Vite and inlines it, sets the page's Content Security Policy by hash, embeds the licence of every bundled package (and refuses GPL or LGPL code), and fills in the wording of both tools.
