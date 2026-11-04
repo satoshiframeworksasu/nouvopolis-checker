@@ -1,0 +1,27 @@
+[
+  {
+    "version": "1.0.0",
+    "date": "2026-11-04",
+    "files": [
+      {
+        "name": "check.html",
+        "bytes": 434094,
+        "sha256": "ced7c2ebca11888699204a100ff9242692042b3770cea63bf55b61c1198eaede"
+      },
+      {
+        "name": "check.sh",
+        "bytes": 11182,
+        "sha256": "106248ec2551f76ec8d554472f58939cf670bb1bbd693d55205302825d9d3783"
+      }
+    ],
+    "sums": {
+      "sha256": "5c52a8560bfe8b676d7396aa013a7c028cf97efcf3d62f15ad37fe8e63acd9cb",
+      "calendars": [
+        "https://alice.btc.calendar.opentimestamps.org",
+        "https://bob.btc.calendar.opentimestamps.org",
+        "https://finney.calendar.eternitywall.com"
+      ],
+      "bitcoinBlock": null
+    }
+  }
+]
